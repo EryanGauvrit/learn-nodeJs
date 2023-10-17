@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 const mysql = require('../mysql');
 
 function generateToken(id){
-    return jwt.sign({id:id}, process.env.JWT_SECRET);
+    return jwt.sign({id:id}, process.env.JWT_SECRET, {expiresIn: '1h'});
 }
 
 router.post('/signup', (req, res, next) => {
@@ -68,7 +68,7 @@ router.post('/login', (req, res, next) => {
             }else {
                 delete user.password;
                 return res.json({
-                    'token': generateToken(user.id),
+                    'token': generateToken(user.id, user.email),
                     'user': user,
                 });
             }
@@ -82,25 +82,30 @@ router.post('/login', (req, res, next) => {
 })
 
 router.get('/token-test', (req, res, next) => {
-    const bearerToken = req.headers.authorization;
-    const token = bearerToken.split(' ')[1];
-    // const decode = jwt_decode(token);
-    jwt.verify(token, process.env.JWT_SECRET, (err, decode) => {
-        if(err){
-            res.status(401);
-            res.send("Vous n'avez pas l'autorisation.");
-        }
-        const userId = decode.id;
-        const query = `SELECT * from user WHERE id='${userId}'`;
-            mysql(query, response => {
-              if(response.length === 0){
-                res.status(401)
-                res.send("Vous n'avez pas l'autorisation.")
-                return;
-              }
-              res.send(`Salut à toi ${response[0].display_name}`)
-            })
-    })
+    if(req.headers.authorization && req.headers.authorization.startsWith('Bearer')){
+        const bearerToken = req.headers.authorization;
+        const token = bearerToken.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET, (err, decode) => {
+            if(err){
+                res.status(401);
+                res.send("Vous n'avez pas l'autorisation.");
+            }
+            const userId = decode.id;
+            const query = `SELECT * from user WHERE id='${userId}'`;
+                mysql(query, response => {
+                  if(response.length === 0){
+                    res.status(401)
+                    res.send("Vous n'avez pas l'autorisation.")
+                    return;
+                  }
+                //   res.send(`Salut à toi ${response[0].display_name}`);
+                  res.json(response[0]);
+                })
+        })
+    }else{
+        res.status(401);
+        res.send("Vous n'avez pas l'autorisation.");
+    }
     
 })
 
