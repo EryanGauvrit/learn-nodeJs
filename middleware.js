@@ -1,33 +1,38 @@
+const  jwt = require("jsonwebtoken");
+const User = require('./models/user');
 
-const jwt = require('jsonwebtoken');
-const mysql = require('./mysql');
-
-function authenticationMiddleware(req, res, next){
-
-    if(req.headers.authorization && req.headers.authorization.startsWith('Bearer')){
-        const bearerToken = req.headers.authorization;
-        const token = bearerToken.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET, (err, decode) => {
+const authenticationMiddleware = (req, res, next) => {
+    const headerAuth = req.headers.authorization;
+    if(headerAuth && headerAuth.startsWith('Bearer')){
+        const token = headerAuth.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET, async (err, decode) => {
             if(err){
                 res.status(401);
-                res.send("Vous n'avez pas l'autorisation.");
+                res.send("Not authorized");
                 return;
             }
             const userId = decode.id;
-            const query = `SELECT id, email from user WHERE id='${userId}'`;
-                mysql(query, response => {
-                  if(response.length === 0){
-                    res.status(401)
-                    res.send("Vous n'avez pas l'autorisation.")
-                    return;
-                  }
-                  req.user = response[0];         
-                  next();
+            await User.findByPk(userId)
+                .then((userDb) => {
+                    if(!userDb){
+                        res.status(401);
+                        res.json(userDb);
+                        return;
+                    }
+                    req.user = userDb.id;
+                    console.log(userDb)
+                    next();
+                    
+                })
+                .catch((err) => {
+                    console.log(err)
+                    res.status(401);
+                    res.send("Not authorized");
                 })
         })
     }else{
         res.status(401);
-        res.send("Vous n'avez pas l'autorisation.");
+        res.send("Not authorized");
     }
 }
 

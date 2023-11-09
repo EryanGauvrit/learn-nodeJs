@@ -5,6 +5,7 @@ var logger = require('morgan');
 const dotenv = require('dotenv');
 dotenv.config();
 
+
 var indexRouter = require('./routes/index');
 var tasksRouter = require('./routes/task');
 var userRouter = require('./routes/user');
@@ -19,6 +20,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/task', tasksRouter);
-app.use('/user', userRouter);
+app.use('/auth', userRouter);
 
 module.exports = app;
